@@ -17,13 +17,27 @@ var (
 	ErrorNoSuchKey = errors.New("no such key")
 )
 
+type EventType byte
+
+const (
+	_                     = iota
+	EventDelete EventType = iota
+	EventPut
+)
+
 type TransactionLogger interface {
 	WriteDelete(key string)
 	WritePut(key, value string)
 }
 
 type FileTransacyionLogger struct {
+}
 
+type Event struct {
+	Sequence  uint64
+	EventType EventType
+	Key       string
+	Value     string
 }
 
 func (l *FileTransacyionLogger) WritePut(key, value string) {
@@ -31,7 +45,7 @@ func (l *FileTransacyionLogger) WritePut(key, value string) {
 }
 
 func (l *FileTransacyionLogger) WriteDelete(key string) {
-	
+
 }
 
 type KeyValue struct {
