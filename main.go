@@ -17,6 +17,23 @@ var (
 	ErrorNoSuchKey = errors.New("no such key")
 )
 
+type TransactionLogger interface {
+	WriteDelete(key string)
+	WritePut(key, value string)
+}
+
+type FileTransacyionLogger struct {
+
+}
+
+func (l *FileTransacyionLogger) WritePut(key, value string) {
+
+}
+
+func (l *FileTransacyionLogger) WriteDelete(key string) {
+	
+}
+
 type KeyValue struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
