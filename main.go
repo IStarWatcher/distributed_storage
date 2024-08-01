@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -30,7 +32,11 @@ type TransactionLogger interface {
 	WritePut(key, value string)
 }
 
-type FileTransacyionLogger struct {
+type FileTransactionLogger struct {
+	events      chan<- Event
+	errors      <-chan error
+	lastSequece uint64
+	file        *os.File
 }
 
 type Event struct {
@@ -40,12 +46,48 @@ type Event struct {
 	Value     string
 }
 
-func (l *FileTransacyionLogger) WritePut(key, value string) {
-
+func NewFileTransactionLogger(filename string) (*FileTransactionLogger, error) {
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open transaction log file: %w", err)
+	}
+	return &FileTransactionLogger{file: file}, nil
 }
 
-func (l *FileTransacyionLogger) WriteDelete(key string) {
+func (l *FileTransactionLogger) Run() {
+	events := make(chan Event, 16)
+	l.events = events
 
+	errors := make(chan error, 1)
+	l.errors = errors
+
+	go func() {
+		for e := range events {
+			l.lastSequece++
+
+			_, err := fmt.Fprintf(
+				l.file,
+				"%d\t%d\t%s\t%s\n",
+				l.lastSequece, e.EventType, e.Key, e.Value)
+			
+			if err != nil {
+				errors <- err
+				return
+			}
+		}
+	}()
+}
+
+func (l *FileTransactionLogger) WritePut(key, value string) {
+	l.events <- Event{EventType: EventPut, Key: key, Value: value}
+}
+
+func (l *FileTransactionLogger) WriteDelete(key string) {
+	l.events <- Event{EventType: EventPut, Key: key}
+}
+
+func (l *FileTransactionLogger) Err() <-chan error {
+	return l.errors
 }
 
 type KeyValue struct {
